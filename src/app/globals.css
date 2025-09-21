@@ -1,0 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Kalam:wght@300;400;700&display=swap');
+@import "tailwindcss";
+
+/* agora sim vêm as regras */
+:root {
+  --cream: #F6E7C1;
+  --teal: #2E7C76;
+  --teal-200: #CFE5E0;
+  --mustard: #DFAF3C;
+  --orange: #E28C3F;
+  --ink: #1F2937;
+}
+
+html, body { 
+  font-family: Inter, system-ui, sans-serif; 
+  color: var(--ink);
+}
+
+h1, h2, h3 { 
+  font-family: Kalam, system-ui, sans-serif; 
+}
