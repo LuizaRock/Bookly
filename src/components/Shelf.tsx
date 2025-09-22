@@ -1,48 +1,99 @@
+// src/components/Shelf.tsx
 "use client";
-import { Star } from "lucide-react";
-import type { Book } from "@/types/book";
-import type { Dispatch, SetStateAction } from "react";
 
-interface ShelfProps {
+import type { Book } from "@/types/book";
+
+type Props = {
   books: Book[];
   ratings: Record<string, number>;
-  setRatings: Dispatch<SetStateAction<Record<string, number>>>;
+  setRatings: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   onOpen: (id: string) => void;
-}
+  onDelete?: (id: string) => void;
+  canDelete?: (id: string) => boolean;
+};
 
-export default function Shelf({ books, ratings, setRatings, onOpen }: ShelfProps) {
+export default function Shelf({ books, ratings, setRatings, onOpen, onDelete, canDelete }: Props) {
+  if (!books.length) {
+    return <p className="text-sm text-slate-600">Nenhum livro encontrado.</p>;
+  }
+
   return (
-    <main className="mx-auto max-w-6xl px-6 py-6 my-6 rounded-2xl border-8 border-[var(--teal)] bg-gradient-to-br from-amber-100 via-amber-50 to-amber-200 shadow-[inset_0_2px_6px_rgba(0,0,0,0.15),0_6px_12px_rgba(0,0,0,0.2)]">
-      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8">
-        {books.map((b) => (
-          <div
-            key={b.id}
-            onClick={() => onOpen(b.id)}
-            className="p-3 border-2 border-amber-900/20 rounded-xl bg-amber-50 shadow-md hover:shadow-lg transition max-w-[140px] mx-auto cursor-pointer"
-          >
-            <div className="aspect-[2/3] overflow-hidden rounded-md bg-[var(--cream)] border border-amber-900/20">
-              <img src={b.cover || "/covers/fallback.jpg"} alt={b.title} className="w-full h-full object-contain" />
-            </div>
-            <h2 className="mt-1 text-sm font-semibold leading-snug">{b.title}</h2>
-            <p className="text-xs text-slate-600">{b.author}</p>
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      {books.map((b) => {
+        const r = ratings[b.id] ?? b.rating ?? 0;
+        const pages = b.pages ?? 0;
+        const cur = Math.min(b.currentPage ?? 0, pages);
+        const pct = pages > 0 ? Math.round((cur / pages) * 100) : 0;
 
-            <div className="flex mt-1" onClick={(e) => e.stopPropagation()}>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  size={16}
-                  onClick={() => setRatings(prev => ({ ...prev, [b.id]: i + 1 }))}
-                  className={
-                    i < (ratings[b.id] ?? 0)
-                      ? "text-yellow-600 fill-yellow-500 cursor-pointer"
-                      : "text-gray-300 cursor-pointer"
-                  }
+        return (
+          <article
+            key={b.id}
+            className="group rounded-2xl border bg-white shadow-sm hover:shadow-md transition overflow-hidden"
+          >
+            <div className="relative">
+              <button
+                onClick={() => onOpen(b.id)}
+                className="block w-full aspect-[2/3] bg-[var(--cream)]"
+                aria-label={`Abrir ${b.title}`}
+                title={b.title}
+              >
+                <img
+                  loading="lazy"
+                  src={b.cover || "/covers/fallback.jpg"}
+                  alt={b.title}
+                  className="w-full h-full object-contain"
                 />
-              ))}
+              </button>
+
+              {onDelete && (!canDelete || canDelete(b.id)) && (
+                <button
+                  onClick={() => onDelete(b.id)}
+                  className="absolute top-2 right-2 rounded-md border bg-white/90 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                  aria-label={`Excluir ${b.title}`}
+                  title="Excluir"
+                >
+                  Excluir
+                </button>
+              )}
             </div>
-          </div>
-        ))}
-      </div>
-    </main>
+
+            <div className="p-3 space-y-2">
+              <h3 className="font-semibold leading-tight line-clamp-2">{b.title}</h3>
+              <p className="text-xs text-slate-600">{b.author}</p>
+
+              {/* Rating (estrelas simples) */}
+              <div className="flex items-center gap-1" aria-label={`Avaliação: ${r} de 5`}>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <button
+                    key={i}
+                    onClick={() => setRatings((prev) => ({ ...prev, [b.id]: i }))}
+                    className="text-base leading-none"
+                    title={`${i} estrela${i > 1 ? "s" : ""}`}
+                    aria-label={`${i} estrela${i > 1 ? "s" : ""}`}
+                  >
+                    <span className={i <= r ? "text-amber-500" : "text-slate-300"}>★</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Progresso de leitura */}
+              {pages > 0 && (
+                <div className="space-y-1">
+                  <div className="h-2 w-full rounded bg-slate-200 overflow-hidden">
+                    <div
+                      className={`h-2 ${pct === 100 ? "bg-green-500" : "bg-[var(--teal)]"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    {cur}/{pages} págs {pct ? `(${pct}%)` : ""}
+                  </p>
+                </div>
+              )}
+            </div>
+          </article>
+        );
+      })}
+    </div>
   );
 }

@@ -1,9 +1,16 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import "./globals.css";
+import ToastHost from "@/components/ToastHost";
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export const metadata: Metadata = {
-  title: "Bookly",
+  title: { default: "Bookly", template: "%s | Bookly" },
   description: "Catálogo pessoal de livros — Projeto Programa Desenvolve 2025",
+  metadataBase: new URL(siteUrl),
+  openGraph: { siteName: "Bookly", type: "website", url: siteUrl },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +37,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <img src="/sidebar3.png" alt="Calvin e Hobbes 3" className="rounded-lg shadow-md" />
           </aside>
         </div>
+
+        {/* Toasts globais */}
+        <ToastHost />
       </body>
     </html>
   );
