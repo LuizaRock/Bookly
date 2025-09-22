@@ -1,4 +1,4 @@
-// src/components/NewBookClient.tsx
+// src/components/EditBookClient.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -11,29 +11,31 @@ const STATUS_LABEL: Record<Extract<ReadingStatus, "QUERO_LER" | "LENDO" | "LIDO"
   LENDO: "Lendo",
   LIDO: "Lido",
 };
-// opções permitidas no form (sem PAUSADO/ABANDONADO)
 const STATUS_OPTIONS: Array<"QUERO_LER" | "LENDO" | "LIDO"> = ["QUERO_LER", "LENDO", "LIDO"];
 
 type FormState = {
   title: string;
   author: string;
   genre: string;
-  year: string;          // string no form, converte pra number
+  year: string;
   pages: string;
-  pageCurrent: string;
-  rating: string;        // 0–5 (slider)
-  status: "QUERO_LER" | "LENDO" | "LIDO"; // restringe aqui
+  // pageCurrent: string; // Removed because Book does not have this property
+  rating: string;
+  status: "QUERO_LER" | "LENDO" | "LIDO";
   isbn: string;
-  cover: string;         // URL (quando usar URL)
+  cover: string; // URL quando fonte = url
   synopsis: string;
   notes: string;
 };
 
 type CoverSource = "url" | "file";
 
-export default function NewBookClient() {
-  const { addBook } = useBooks();
+export default function EditBookClient({ id }: { id: string }) {
   const router = useRouter();
+  const { books, updateBook, deleteBook, isUserBook } = useBooks();
+
+  const book = useMemo(() => books.find((b) => b.id === id) ?? null, [books, id]);
+  const userOwns = isUserBook(id);
 
   const [f, setF] = useState<FormState>({
     title: "",
@@ -41,7 +43,7 @@ export default function NewBookClient() {
     genre: "",
     year: "",
     pages: "",
-    pageCurrent: "",
+    // pageCurrent: "", // Removed because Book does not have this property
     rating: "0",
     status: "QUERO_LER",
     isbn: "",
@@ -49,27 +51,50 @@ export default function NewBookClient() {
     synopsis: "",
     notes: "",
   });
-
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [redirectAfterSave, setRedirectAfterSave] = useState(false);
 
-  // ===== Capa: URL OU arquivo local =====
+  // capa: URL ou arquivo (DataURL)
   const [coverSource, setCoverSource] = useState<CoverSource>("url");
-  const [coverDataUrl, setCoverDataUrl] = useState<string>(""); // DataURL quando vem de arquivo
+  const [coverDataUrl, setCoverDataUrl] = useState<string>("");
   const [imgOk, setImgOk] = useState(true);
 
+  // carregar dados do livro
+  useEffect(() => {
+    if (!book) return;
+    // decide origem da capa
+    const fileMode = !!book.cover && book.cover.startsWith("data:");
+    setCoverSource(fileMode ? "file" : "url");
+    setCoverDataUrl(fileMode ? (book.cover ?? "") : "");
+    setF({
+      title: book.title ?? "",
+      author: book.author ?? "",
+      genre: book.genre ?? "",
+      year: book.year ? String(book.year) : "",
+      pages: book.pages ? String(book.pages) : "",
+      // pageCurrent: book.pageCurrent ? String(book.pageCurrent) : "", // Removed because Book does not have this property
+      rating: typeof book.rating === "number" ? String(book.rating) : "0",
+      status: (["QUERO_LER", "LENDO", "LIDO"].includes(book.status) ? book.status : "QUERO_LER") as
+        | "QUERO_LER" | "LENDO" | "LIDO",
+      isbn: book.isbn ?? "",
+      cover: !fileMode ? (book.cover ?? "") : "",
+      synopsis: book.synopsis ?? "",
+      notes: book.notes ?? "",
+    });
+  }, [book]);
+
+  // toast helper
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(null), 2200);
   }
 
-  function setField<K extends keyof FormState>(key: K, val: FormState[K]) {
-    setF((prev) => ({ ...prev, [key]: val }));
+  function setField<K extends keyof FormState>(k: K, v: FormState[K]) {
+    setF((p) => ({ ...p, [k]: v }));
   }
 
-  // Barra de progresso
+  // progresso (igual new)
   const progress = useMemo(() => {
     const entries = Object.entries(f) as [keyof FormState, string][];
     const filled = entries.filter(([k, v]) => {
@@ -80,15 +105,12 @@ export default function NewBookClient() {
     return Math.round((filled / entries.length) * 100);
   }, [f, coverSource, coverDataUrl]);
 
-  // Preview: reseta erro de imagem ao trocar origem/valor
   useEffect(() => { setImgOk(true); }, [f.cover, coverDataUrl, coverSource]);
 
-  // ====== Upload handlers ======
-  const MAX_BYTES = 3 * 1024 * 1024; // 3MB
-
+  // ===== Upload =====
+  const MAX_BYTES = 3 * 1024 * 1024;
   function validateAndLoadFile(file: File) {
-    const isImage = file.type.startsWith("image/");
-    if (!isImage) {
+    if (!file.type.startsWith("image/")) {
       setErrors((e) => ({ ...e, coverFile: "Arquivo precisa ser uma imagem." }));
       return;
     }
@@ -119,20 +141,19 @@ export default function NewBookClient() {
     setErrors((e) => { const { coverFile, ...rest } = e; return rest; });
   }
 
-  // ====== Validação simples ======
+  // ===== Validar =====
   function validate(): boolean {
     const e: Record<string, string> = {};
-
     if (!f.title.trim()) e.title = "Título é obrigatório.";
     if (!f.author.trim()) e.author = "Autor é obrigatório.";
 
     const pages = Number(f.pages || 0);
-    const pageCurrent = Number(f.pageCurrent || 0);
-    if (f.pages && (isNaN(pages) || pages < 0)) e.pages = "Informe um número válido.";
-    if (f.pageCurrent && (isNaN(pageCurrent) || pageCurrent < 0)) e.pageCurrent = "Informe um número válido.";
-    if (!isNaN(pages) && !isNaN(pageCurrent) && pages > 0 && pageCurrent > pages) {
-      e.pageCurrent = "Página atual não pode ser maior que total.";
-    }
+    // const pageCurrent = Number(f.pageCurrent || 0); // Removed because Book does not have this property
+    if (f.pages && (isNaN(pages) || pages < 0)) e.pages = "Número inválido.";
+    // if (f.pageCurrent && (isNaN(pageCurrent) || pageCurrent < 0)) e.pageCurrent = "Número inválido.";
+    // if (!isNaN(pages) && !isNaN(pageCurrent) && pages > 0 && pageCurrent > pages) {
+    //   e.pageCurrent = "Página atual não pode ser maior que total.";
+    // }
 
     const year = Number(f.year || 0);
     if (f.year && (isNaN(year) || year < 0)) e.year = "Ano inválido.";
@@ -143,71 +164,98 @@ export default function NewBookClient() {
     if (coverSource === "url") {
       if (f.cover && !/^https?:\/\//i.test(f.cover)) e.cover = "URL deve começar com http(s)://";
     } else {
-      if (!coverDataUrl) e.coverFile = "Selecione uma imagem (ou arraste aqui).";
+      if (!coverDataUrl) e.coverFile = "Selecione uma imagem (ou arraste).";
     }
 
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
-  // ====== Submit ======
-  async function handleSubmit(e: React.FormEvent, goBack: boolean) {
-    e.preventDefault();
+  // ===== Salvar / Excluir =====
+  async function doSave(goBack: boolean) {
+    if (!book) return;
     if (!validate()) return;
     setSubmitting(true);
     try {
-      const coverFinal = coverSource === "file"
-        ? (coverDataUrl || undefined)
-        : (f.cover.trim() || undefined);
+      const coverFinal =
+        coverSource === "file" ? (coverDataUrl || undefined) : (f.cover.trim() || undefined);
 
-      const book: Book = {
-        id: (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`).toString(),
+      const patch: Partial<Book> = {
         title: f.title.trim(),
         author: f.author.trim(),
         genre: f.genre.trim() || undefined,
         year: f.year ? Number(f.year) : undefined,
         pages: f.pages ? Number(f.pages) : undefined,
-        // pageCurrent: f.pageCurrent ? Number(f.pageCurrent) : undefined, // Removed: not in Book type
         rating: f.rating ? Number(f.rating) : 0,
-        status: f.status as ReadingStatus, // ainda compatível com tipo global
+        status: f.status as ReadingStatus,
         isbn: f.isbn.trim() || undefined,
-        cover: coverFinal,            // URL ou DataURL
+        cover: coverFinal,
         synopsis: f.synopsis.trim() || undefined,
         notes: f.notes.trim() || undefined,
       };
 
-      addBook(book); // dispara bookly:books-changed
-      showToast("Livro adicionado 🎉");
+      updateBook(id, patch);
+      showToast("Livro atualizado ✔");
 
       if (goBack) {
-        // dá tempo do toast aparecer e do evento propagar
-        setTimeout(() => router.push("/"), 300);
-        return;
+        setTimeout(() => router.push(`/books/${id}`), 300);
       }
-
-      // se ficar na página, limpa form
-      setF({
-        title: "",
-        author: "",
-        genre: "",
-        year: "",
-        pages: "",
-        pageCurrent: "",
-        rating: "0",
-        status: "QUERO_LER",
-        isbn: "",
-        cover: "",
-        synopsis: "",
-        notes: "",
-      });
-      setCoverDataUrl("");
     } catch (err) {
       console.error(err);
-      showToast("Erro ao adicionar livro 😕");
+      showToast("Erro ao salvar 😕");
     } finally {
       setSubmitting(false);
-      setRedirectAfterSave(false);
     }
+  }
+
+  function doDelete() {
+    if (!book) return;
+    if (!confirm("Tem certeza que deseja excluir este livro?")) return;
+    deleteBook(id);
+    showToast("Livro excluído 🗑️");
+    setTimeout(() => router.push("/"), 300);
+  }
+
+  // ===== Render =====
+  if (!book) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-4">
+        <h1 className="text-2xl font-extrabold">Livro não encontrado</h1>
+        <button
+          type="button"
+          onClick={() => router.push("/")}
+          className="rounded-lg border px-3 py-1.5 text-sm bg-white hover:bg-[var(--teal-200)]"
+        >
+          ← Voltar
+        </button>
+      </div>
+    );
+  }
+
+  if (!userOwns) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-4">
+        <h1 className="text-2xl font-extrabold">Este livro não é seu para editar</h1>
+        <p className="text-sm text-slate-600">
+          Apenas livros adicionados por você podem ser editados. Abra o livro e clique em “Adicionar” para criar sua própria cópia.
+        </p>
+        <div className="flex gap-2">
+          <a
+            href={`/books/${id}`}
+            className="rounded-lg bg-[var(--teal)] text-white px-3 py-1.5 text-sm hover:opacity-90"
+          >
+            Ver página do livro
+          </a>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="rounded-lg border px-3 py-1.5 text-sm bg-white hover:bg-[var(--teal-200)]"
+          >
+            ← Voltar
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const previewSrc =
@@ -217,30 +265,36 @@ export default function NewBookClient() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Toast */}
+      {/* toast */}
       {toast && (
         <div role="status" className="fixed top-4 right-4 z-50 rounded-lg bg-black text-white/95 px-4 py-2 shadow-lg">
           {toast}
         </div>
       )}
 
-      {/* Top bar: voltar */}
       <div className="flex items-center justify-between">
         <header className="space-y-1">
-          <h1 className="text-2xl font-extrabold">Adicionar novo livro</h1>
-          <p className="text-sm text-slate-600">Escolha capa por URL ou faça upload do seu PC.</p>
+          <h1 className="text-2xl font-extrabold">Editar livro</h1>
+          <p className="text-sm text-slate-600">Atualize os campos e salve.</p>
         </header>
-        <button
-          type="button"
-          onClick={() => router.push("/")}
-          className="rounded-lg border px-3 py-1.5 text-sm bg-white hover:bg-[var(--teal-200)]"
-          aria-label="Voltar para o início"
-        >
-          ← Voltar
-        </button>
+        <div className="flex gap-2">
+          <a
+            href={`/books/${id}`}
+            className="rounded-lg bg-[var(--teal)] text-white px-3 py-1.5 text-sm hover:opacity-90"
+          >
+            Ver página
+          </a>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="rounded-lg border px-3 py-1.5 text-sm bg-white hover:bg-[var(--teal-200)]"
+          >
+            ← Voltar
+          </button>
+        </div>
       </div>
 
-      {/* Barra de progresso */}
+      {/* barra de progresso */}
       <div>
         <div className="flex justify-between text-xs mb-1">
           <span>Progresso do formulário</span>
@@ -258,10 +312,10 @@ export default function NewBookClient() {
       </div>
 
       <form
-        onSubmit={(e) => handleSubmit(e, redirectAfterSave)}
+        onSubmit={(e) => { e.preventDefault(); void doSave(false); }}
         className="grid grid-cols-1 md:grid-cols-3 gap-6"
       >
-        {/* Coluna esquerda: Preview + seletor de origem */}
+        {/* preview + origem da capa */}
         <div className="md:col-span-1">
           <div className="aspect-[2/3] rounded-md bg-[var(--cream)] border overflow-hidden">
             <img
@@ -272,7 +326,6 @@ export default function NewBookClient() {
             />
           </div>
 
-          {/* Tabs simples de origem da capa */}
           <div className="mt-3 flex gap-2 text-xs">
             <button
               type="button"
@@ -292,7 +345,6 @@ export default function NewBookClient() {
             </button>
           </div>
 
-          {/* Entrada conforme origem */}
           {coverSource === "url" ? (
             <>
               <label className="block text-xs font-semibold mt-3 mb-1">URL da capa</label>
@@ -333,83 +385,61 @@ export default function NewBookClient() {
           )}
         </div>
 
-        {/* Coluna direita: Campos */}
+        {/* campos */}
         <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Título */}
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold mb-1">Título *</label>
             <input
               value={f.title}
               onChange={(e) => setField("title", e.target.value)}
               className="w-full rounded-lg border px-3 py-2 bg-white"
-              placeholder="Ex.: O Hobbit"
             />
             {errors.title && <p className="text-xs text-red-600 mt-1">{errors.title}</p>}
           </div>
 
-          {/* Autor */}
           <div>
             <label className="block text-xs font-semibold mb-1">Autor(a) *</label>
             <input
               value={f.author}
               onChange={(e) => setField("author", e.target.value)}
               className="w-full rounded-lg border px-3 py-2 bg-white"
-              placeholder="Ex.: J. R. R. Tolkien"
             />
             {errors.author && <p className="text-xs text-red-600 mt-1">{errors.author}</p>}
           </div>
 
-          {/* Gênero */}
           <div>
             <label className="block text-xs font-semibold mb-1">Gênero</label>
             <input
               value={f.genre}
               onChange={(e) => setField("genre", e.target.value)}
               className="w-full rounded-lg border px-3 py-2 bg-white"
-              placeholder="Fantasia, Romance, Sci-fi…"
             />
           </div>
 
-          {/* Ano */}
           <div>
             <label className="block text-xs font-semibold mb-1">Ano</label>
             <input
               value={f.year}
               onChange={(e) => setField("year", e.target.value)}
               className="w-full rounded-lg border px-3 py-2 bg-white"
-              placeholder="1937"
               inputMode="numeric"
             />
             {errors.year && <p className="text-xs text-red-600 mt-1">{errors.year}</p>}
           </div>
 
-          {/* Páginas totais */}
           <div>
             <label className="block text-xs font-semibold mb-1">Páginas totais</label>
             <input
               value={f.pages}
               onChange={(e) => setField("pages", e.target.value)}
               className="w-full rounded-lg border px-3 py-2 bg-white"
-              placeholder="310"
               inputMode="numeric"
             />
             {errors.pages && <p className="text-xs text-red-600 mt-1">{errors.pages}</p>}
           </div>
 
-          {/* Página atual */}
-          <div>
-            <label className="block text-xs font-semibold mb-1">Página atual</label>
-            <input
-              value={f.pageCurrent}
-              onChange={(e) => setField("pageCurrent", e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 bg-white"
-              placeholder="42"
-              inputMode="numeric"
-            />
-            {errors.pageCurrent && <p className="text-xs text-red-600 mt-1">{errors.pageCurrent}</p>}
-          </div>
+          {/* Página atual removed because Book does not have this property */}
 
-          {/* Status (somente 3 opções) */}
           <div>
             <label className="block text-xs font-semibold mb-1">Status</label>
             <select
@@ -425,18 +455,15 @@ export default function NewBookClient() {
             </select>
           </div>
 
-          {/* ISBN */}
           <div>
             <label className="block text-xs font-semibold mb-1">ISBN</label>
             <input
               value={f.isbn}
               onChange={(e) => setField("isbn", e.target.value)}
               className="w-full rounded-lg border px-3 py-2 bg-white"
-              placeholder="978-…"
             />
           </div>
 
-          {/* Rating */}
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold mb-1">Rating (0–5)</label>
             <div className="flex items-center gap-3">
@@ -449,14 +476,11 @@ export default function NewBookClient() {
                 onChange={(e) => setField("rating", e.target.value)}
                 className="flex-1 accent-[var(--teal)]"
               />
-              <span className="text-sm w-10 text-right tabular-nums">
-                {Number(f.rating).toFixed(1)}
-              </span>
+              <span className="text-sm w-10 text-right tabular-nums">{Number(f.rating).toFixed(1)}</span>
             </div>
             {errors.rating && <p className="text-xs text-red-600 mt-1">{errors.rating}</p>}
           </div>
 
-          {/* Sinopse */}
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold mb-1">Sinopse</label>
             <textarea
@@ -464,11 +488,9 @@ export default function NewBookClient() {
               onChange={(e) => setField("synopsis", e.target.value)}
               rows={5}
               className="w-full rounded-lg border px-3 py-2 bg-white"
-              placeholder="Digite um resumo do livro…"
             />
           </div>
 
-          {/* Notas pessoais */}
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold mb-1">Notas pessoais</label>
             <textarea
@@ -476,7 +498,6 @@ export default function NewBookClient() {
               onChange={(e) => setField("notes", e.target.value)}
               rows={4}
               className="w-full rounded-lg border px-3 py-2 bg-white"
-              placeholder="Observações, highlights, insights…"
             />
           </div>
 
@@ -486,54 +507,38 @@ export default function NewBookClient() {
               type="submit"
               disabled={submitting}
               className="rounded-lg bg-[var(--teal)] text-white px-4 py-2 hover:opacity-90 disabled:opacity-50"
-              title="Salvar e continuar nesta página"
-              onClick={() => setRedirectAfterSave(false)}
+              title="Salvar"
+              onClick={(e) => { e.preventDefault(); void doSave(false); }}
             >
-              {submitting ? "Salvando…" : "Salvar livro"}
-            </button>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-lg bg-[var(--teal)]/90 text-white px-4 py-2 hover:opacity-90 disabled:opacity-50"
-              title="Salvar e voltar para a página inicial"
-              onClick={() => setRedirectAfterSave(true)}
-            >
-              {submitting ? "Salvando…" : "Salvar e voltar"}
+              {submitting ? "Salvando…" : "Salvar"}
             </button>
 
             <button
               type="button"
-              onClick={() => router.push("/")}
+              disabled={submitting}
+              className="rounded-lg bg-[var(--teal)]/90 text-white px-4 py-2 hover:opacity-90 disabled:opacity-50"
+              title="Salvar e voltar"
+              onClick={() => void doSave(true)}
+            >
+              Salvar e voltar
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.push(`/books/${id}`)}
               className="rounded-lg border px-4 py-2 bg-white hover:bg-[var(--teal-200)]"
-              title="Cancelar e voltar"
+              title="Cancelar"
             >
               Cancelar
             </button>
 
             <button
               type="button"
-              onClick={() => {
-                setF({
-                  title: "",
-                  author: "",
-                  genre: "",
-                  year: "",
-                  pages: "",
-                  pageCurrent: "",
-                  rating: "0",
-                  status: "QUERO_LER",
-                  isbn: "",
-                  cover: "",
-                  synopsis: "",
-                  notes: "",
-                });
-                setCoverDataUrl("");
-              }}
-              className="ml-auto rounded-lg border px-4 py-2 bg-white hover:bg-[var(--teal-200)]"
-              title="Limpar formulário"
+              onClick={doDelete}
+              className="ml-auto rounded-lg border px-4 py-2 text-red-600 border-red-300 hover:bg-red-50"
+              title="Excluir livro"
             >
-              Limpar
+              Excluir
             </button>
           </div>
         </div>
