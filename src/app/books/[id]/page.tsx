@@ -1,10 +1,10 @@
+// src/app/books/[id]/page.tsx
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { booksSeed } from "@/lib/seed";
+import { useBooks } from "@/hooks/useBooks";
 import type { Book, ReadingStatus } from "@/types/book";
-import { Star } from "lucide-react";
 
 const STATUS_LABEL: Record<ReadingStatus, string> = {
   QUERO_LER: "Quero ler",
@@ -14,169 +14,68 @@ const STATUS_LABEL: Record<ReadingStatus, string> = {
   ABANDONADO: "Abandonado",
 };
 
-export default function BookDetailsPage() {
-  const params = useParams();
+export default function BookPage() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const id = params?.id as string;
+  const { books } = useBooks();
 
-  const [book, setBook] = useState<Book | null>(null);
-  const [rating, setRating] = useState(0);
-  const [status, setStatus] = useState<ReadingStatus>("QUERO_LER");
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
 
-  // carrega dados
-  useEffect(() => {
-    try {
-      const rawUserBooks = localStorage.getItem("bookly:userBooks");
-      const userBooks = rawUserBooks ? (JSON.parse(rawUserBooks) as Book[]) : [];
-      const found = booksSeed.find((b) => b.id === id) ?? userBooks.find((b) => b.id === id) ?? null;
-      setBook(found);
+  const book: Book | undefined = useMemo(
+    () => books.find((b) => b.id === id),
+    [books, id]
+  );
 
-      if (found) {
-        const rawRatings = localStorage.getItem("bookly:ratings");
-        const parsedRatings = rawRatings ? JSON.parse(rawRatings) : {};
-        setRating(parsedRatings[id] ?? found.rating ?? 0);
-
-        const rawStatuses = localStorage.getItem("bookly:statuses");
-        const parsedStatuses = rawStatuses ? JSON.parse(rawStatuses) : {};
-        setStatus(parsedStatuses[id] ?? found.status);
-      }
-    } catch {}
-  }, [id]);
-
-  // salva alterações
-  const updateRating = (newRating: number) => {
-    setRating(newRating);
-    try {
-      const raw = localStorage.getItem("bookly:ratings");
-      const parsed = raw ? JSON.parse(raw) : {};
-      parsed[id] = newRating;
-      localStorage.setItem("bookly:ratings", JSON.stringify(parsed));
-    } catch {}
-  };
-
-  const updateStatus = (newStatus: ReadingStatus) => {
-    setStatus(newStatus);
-    try {
-      const raw = localStorage.getItem("bookly:statuses");
-      const parsed = raw ? JSON.parse(raw) : {};
-      parsed[id] = newStatus;
-      localStorage.setItem("bookly:statuses", JSON.stringify(parsed));
-    } catch {}
-  };
-
-  const deleteBook = () => {
-    try {
-      const raw = localStorage.getItem("bookly:userBooks");
-      const parsed = raw ? (JSON.parse(raw) as Book[]) : [];
-      const newBooks = parsed.filter((b) => b.id !== id);
-      localStorage.setItem("bookly:userBooks", JSON.stringify(newBooks));
-      alert("Livro excluído com sucesso!");
-      router.push("/");
-    } catch {
-      alert("Erro ao excluir livro.");
-    }
-  };
-
+  if (!hydrated) {
+    return <main className="mx-auto max-w-3xl p-6"><p>Carregando livro…</p></main>;
+  }
   if (!book) {
     return (
-      <main className="p-8">
-        <p>Livro não encontrado.</p>
-        <button
-          onClick={() => router.push("/")}
-          className="mt-4 px-4 py-2 rounded-lg border hover:bg-slate-50"
-        >
-          ← Voltar
+      <main className="mx-auto max-w-3xl p-6 space-y-4">
+        <h1 className="text-2xl font-bold">Livro não encontrado</h1>
+        <button onClick={() => router.push("/")} className="rounded-lg border px-4 py-2 hover:bg-[var(--teal-200)]">
+          Voltar para a biblioteca
         </button>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-8 space-y-6">
-      <div className="flex justify-between items-center">
-        <button
-          onClick={() => router.push("/")}
-          className="px-4 py-2 rounded-lg border hover:bg-slate-50"
-        >
-          ← Voltar
-        </button>
-
-        {/* Só mostra excluir se não for livro do seed */}
-        {!booksSeed.find((b) => b.id === book.id) && (
-          <button
-            onClick={deleteBook}
-            className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
-          >
-            Excluir livro
-          </button>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-6">
-        {/* capa */}
-        <div className="rounded-lg overflow-hidden border bg-[var(--cream)]">
-          <img
-            src={book.cover || "/covers/fallback.jpg"}
-            alt={book.title}
-            className="w-full h-full object-contain"
-          />
+    <main className="mx-auto max-w-3xl p-6 space-y-6">
+      <header className="flex flex-col sm:flex-row gap-4">
+        <div className="w-40 h-60 border rounded-md overflow-hidden bg-[var(--cream)]">
+          <img src={book.cover || "/covers/fallback.jpg"} alt={book.title} className="w-full h-full object-contain" />
         </div>
-
-        {/* infos */}
-        <div className="space-y-3">
-          <h1 className="text-3xl font-extrabold leading-tight">{book.title}</h1>
-          <p className="text-slate-700">
-            {book.author}
-            {book.year ? ` · ${book.year}` : ""}
+        <div className="flex-1 space-y-2">
+          <h1 className="text-3xl font-bold">{book.title}</h1>
+          <p className="text-lg text-slate-700">
+            {book.author}{book.year ? ` · ${book.year}` : ""}
           </p>
-          {book.genre && (
-            <span className="inline-block rounded-full bg-[var(--mustard)]/30 px-2 py-0.5 text-xs">
-              {book.genre}
-            </span>
-          )}
-          {book.pages && (
-            <span className="inline-block ml-2 rounded-full bg-[var(--teal)]/15 px-2 py-0.5 text-xs">
-              {book.pages} págs
-            </span>
-          )}
-
-          {/* Rating */}
-          <div className="flex gap-1 items-center">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star
-                key={i}
-                size={20}
-                onClick={() => updateRating(i + 1)}
-                className={
-                  i < rating
-                    ? "text-yellow-600 fill-yellow-500 cursor-pointer"
-                    : "text-gray-300 cursor-pointer"
-                }
-              />
-            ))}
-            <span className="ml-2 text-sm text-slate-600">{rating} / 5</span>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {book.genre && <span className="inline-block rounded-full bg-[var(--mustard)]/30 px-2 py-0.5 text-sm">{book.genre}</span>}
+            {book.pages && <span className="inline-block rounded-full bg-[var(--teal)]/15 px-2 py-0.5 text-sm">{book.pages} págs</span>}
+            <span className="inline-block rounded-full bg-amber-200/60 px-2 py-0.5 text-sm">{STATUS_LABEL[book.status]}</span>
           </div>
-
-          {/* Status */}
-          <div className="flex gap-2 flex-wrap pt-2">
-            {(["QUERO_LER", "LENDO", "LIDO", "PAUSADO", "ABANDONADO"] as ReadingStatus[]).map((st) => (
-              <button
-                key={st}
-                onClick={() => updateStatus(st)}
-                className={`rounded-lg border px-3 py-1.5 text-xs hover:bg-[var(--teal-200)] ${
-                  status === st ? "bg-[var(--teal-200)] font-semibold" : ""
-                }`}
-              >
-                {STATUS_LABEL[st]}
-              </button>
-            ))}
+          <div className="pt-3 flex gap-2">
+            <a href={`/books/edit/${book.id}`} className="rounded-lg border px-4 py-2 text-sm hover:bg-[var(--teal-200)]">Editar</a>
+            <button onClick={() => router.push("/")} className="rounded-lg border px-4 py-2 text-sm hover:bg-[var(--teal-200)]">Voltar</button>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* sinopse */}
       {book.synopsis && (
-        <p className="pt-4 text-sm leading-relaxed">{book.synopsis}</p>
+        <section>
+          <h2 className="text-xl font-semibold mb-2">Sinopse</h2>
+          <p className="leading-relaxed text-slate-800">{book.synopsis}</p>
+        </section>
+      )}
+
+      {book.notes && (
+        <section>
+          <h2 className="text-xl font-semibold mb-2">Notas pessoais</h2>
+          <p className="leading-relaxed text-slate-800">{book.notes}</p>
+        </section>
       )}
     </main>
   );

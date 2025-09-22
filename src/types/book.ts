@@ -1,24 +1,25 @@
+// src/types/book.ts
 export type ReadingStatus =
   | "QUERO_LER"
   | "LENDO"
-  | "LIDO"
-  | "PAUSADO"
-  | "ABANDONADO";
+  | "LIDO";
 
-export type Genre = string;
-
-
-export interface Book {
+export type Book = {
   id: string;
-  title: string;       // obrigatório
-  author: string;      // obrigatório
-  genre?: Genre;
+  title: string;
+  author: string;
+  status: ReadingStatus;
+
+  genre?: string;
   year?: number;
   pages?: number;
-  rating?: 1 | 2 | 3 | 4 | 5;
-  synopsis?: string;
-  cover?: string;
-  status: ReadingStatus;
-  currentPage?: number;
+
+  // <- O campo certo para “página atual”
+  pageCurrent?: number;
+
+  rating?: number; // 0–5
   isbn?: string;
-}
+  cover?: string; // URL ou dataURL
+  synopsis?: string;
+  notes?: string;
+};
