@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { booksSeed } from "@/lib/seed";
-import { Book } from "@/types/book";
+import type { Book } from "@/types/book";
 import Modal from "@/components/Modal";
 import Shelf from "@/components/Shelf";
 

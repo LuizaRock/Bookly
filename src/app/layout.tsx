@@ -31,11 +31,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main className="flex-1 p-8">{children}</main>
 
           {/* Sidebar direita com várias imagens */}
-          <aside className="hidden md:flex w-48 border-l-2 border-[var(--teal)] p-4 flex-col space-y-4 overflow-y-auto">
-            <img src="/sidebar1.png" alt="Calvin e Hobbes 1" className="rounded-lg shadow-md" />
-            <img src="/sidebar2.png" alt="Calvin e Hobbes 2" className="rounded-lg shadow-md" />
-            <img src="/sidebar3.png" alt="Calvin e Hobbes 3" className="rounded-lg shadow-md" />
-          </aside>
+          <aside className="hidden md:flex w-48 border-l-2 border-[var(--teal)] p-4 overflow-visible">
+  <div className="flex flex-col gap-4">
+    {Array.from({ length: 6 }).map((_, i) => {
+      const imgs = ["/sidebar1.png", "/sidebar2.png", "/sidebar3.png"];
+      const src = imgs[i % imgs.length];
+      const alt = `Calvin e Hobbes ${ (i % imgs.length) + 1 }`;
+      return (
+        <img
+          key={i}
+          src={src}
+          alt={alt}
+          className="rounded-lg shadow-md"
+          loading="lazy"
+        />
+      );
+    })}
+  </div>
+</aside>
         </div>
 
         {/* Toasts globais */}

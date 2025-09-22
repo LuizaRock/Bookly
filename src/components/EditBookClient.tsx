@@ -1,4 +1,3 @@
-// src/components/EditBookClient.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -19,11 +18,11 @@ type FormState = {
   genre: string;
   year: string;
   pages: string;
-  // pageCurrent: string; // Removed because Book does not have this property
+  pageCurrent: string; // ✅ voltou
   rating: string;
   status: "QUERO_LER" | "LENDO" | "LIDO";
   isbn: string;
-  cover: string; // URL quando fonte = url
+  cover: string;
   synopsis: string;
   notes: string;
 };
@@ -43,7 +42,7 @@ export default function EditBookClient({ id }: { id: string }) {
     genre: "",
     year: "",
     pages: "",
-    // pageCurrent: "", // Removed because Book does not have this property
+    pageCurrent: "",
     rating: "0",
     status: "QUERO_LER",
     isbn: "",
@@ -63,7 +62,6 @@ export default function EditBookClient({ id }: { id: string }) {
   // carregar dados do livro
   useEffect(() => {
     if (!book) return;
-    // decide origem da capa
     const fileMode = !!book.cover && book.cover.startsWith("data:");
     setCoverSource(fileMode ? "file" : "url");
     setCoverDataUrl(fileMode ? (book.cover ?? "") : "");
@@ -73,7 +71,7 @@ export default function EditBookClient({ id }: { id: string }) {
       genre: book.genre ?? "",
       year: book.year ? String(book.year) : "",
       pages: book.pages ? String(book.pages) : "",
-      // pageCurrent: book.pageCurrent ? String(book.pageCurrent) : "", // Removed because Book does not have this property
+      pageCurrent: book.pageCurrent ? String(book.pageCurrent) : "", // ✅ carrega
       rating: typeof book.rating === "number" ? String(book.rating) : "0",
       status: (["QUERO_LER", "LENDO", "LIDO"].includes(book.status) ? book.status : "QUERO_LER") as
         | "QUERO_LER" | "LENDO" | "LIDO",
@@ -89,12 +87,11 @@ export default function EditBookClient({ id }: { id: string }) {
     setToast(msg);
     setTimeout(() => setToast(null), 2200);
   }
-
   function setField<K extends keyof FormState>(k: K, v: FormState[K]) {
     setF((p) => ({ ...p, [k]: v }));
   }
 
-  // progresso (igual new)
+  // progresso
   const progress = useMemo(() => {
     const entries = Object.entries(f) as [keyof FormState, string][];
     const filled = entries.filter(([k, v]) => {
@@ -148,12 +145,12 @@ export default function EditBookClient({ id }: { id: string }) {
     if (!f.author.trim()) e.author = "Autor é obrigatório.";
 
     const pages = Number(f.pages || 0);
-    // const pageCurrent = Number(f.pageCurrent || 0); // Removed because Book does not have this property
+    const pageCurrent = Number(f.pageCurrent || 0);
     if (f.pages && (isNaN(pages) || pages < 0)) e.pages = "Número inválido.";
-    // if (f.pageCurrent && (isNaN(pageCurrent) || pageCurrent < 0)) e.pageCurrent = "Número inválido.";
-    // if (!isNaN(pages) && !isNaN(pageCurrent) && pages > 0 && pageCurrent > pages) {
-    //   e.pageCurrent = "Página atual não pode ser maior que total.";
-    // }
+    if (f.pageCurrent && (isNaN(pageCurrent) || pageCurrent < 0)) e.pageCurrent = "Número inválido.";
+    if (!isNaN(pages) && !isNaN(pageCurrent) && pages > 0 && pageCurrent > pages) {
+      e.pageCurrent = "Página atual não pode ser maior que total.";
+    }
 
     const year = Number(f.year || 0);
     if (f.year && (isNaN(year) || year < 0)) e.year = "Ano inválido.";
@@ -186,6 +183,7 @@ export default function EditBookClient({ id }: { id: string }) {
         genre: f.genre.trim() || undefined,
         year: f.year ? Number(f.year) : undefined,
         pages: f.pages ? Number(f.pages) : undefined,
+        pageCurrent: f.pageCurrent ? Number(f.pageCurrent) : undefined, // ✅ salva
         rating: f.rating ? Number(f.rating) : 0,
         status: f.status as ReadingStatus,
         isbn: f.isbn.trim() || undefined,
@@ -286,7 +284,7 @@ export default function EditBookClient({ id }: { id: string }) {
           </a>
           <button
             type="button"
-            onClick={() => router.push("/")}
+            onClick={() => router.push(`/books/${id}`)}
             className="rounded-lg border px-3 py-1.5 text-sm bg-white hover:bg-[var(--teal-200)]"
           >
             ← Voltar
@@ -438,7 +436,17 @@ export default function EditBookClient({ id }: { id: string }) {
             {errors.pages && <p className="text-xs text-red-600 mt-1">{errors.pages}</p>}
           </div>
 
-          {/* Página atual removed because Book does not have this property */}
+          {/* ✅ Página atual */}
+          <div>
+            <label className="block text-xs font-semibold mb-1">Página atual</label>
+            <input
+              value={f.pageCurrent}
+              onChange={(e) => setField("pageCurrent", e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 bg-white"
+              inputMode="numeric"
+            />
+            {errors.pageCurrent && <p className="text-xs text-red-600 mt-1">{errors.pageCurrent}</p>}
+          </div>
 
           <div>
             <label className="block text-xs font-semibold mb-1">Status</label>

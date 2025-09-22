@@ -1,4 +1,3 @@
-// src/app/books/[id]/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -10,8 +9,6 @@ const STATUS_LABEL: Record<ReadingStatus, string> = {
   QUERO_LER: "Quero ler",
   LENDO: "Lendo",
   LIDO: "Lido",
-  PAUSADO: "Pausado",
-  ABANDONADO: "Abandonado",
 };
 
 export default function BookPage() {
@@ -30,11 +27,15 @@ export default function BookPage() {
   if (!hydrated) {
     return <main className="mx-auto max-w-3xl p-6"><p>Carregando livro…</p></main>;
   }
+
   if (!book) {
     return (
       <main className="mx-auto max-w-3xl p-6 space-y-4">
         <h1 className="text-2xl font-bold">Livro não encontrado</h1>
-        <button onClick={() => router.push("/")} className="rounded-lg border px-4 py-2 hover:bg-[var(--teal-200)]">
+        <button
+          onClick={() => router.push("/")}
+          className="rounded-lg border px-4 py-2 hover:bg-[var(--teal-200)]"
+        >
           Voltar para a biblioteca
         </button>
       </main>
@@ -45,7 +46,11 @@ export default function BookPage() {
     <main className="mx-auto max-w-3xl p-6 space-y-6">
       <header className="flex flex-col sm:flex-row gap-4">
         <div className="w-40 h-60 border rounded-md overflow-hidden bg-[var(--cream)]">
-          <img src={book.cover || "/covers/fallback.jpg"} alt={book.title} className="w-full h-full object-contain" />
+          <img
+            src={book.cover || "/covers/fallback.jpg"}
+            alt={book.title}
+            className="w-full h-full object-contain"
+          />
         </div>
         <div className="flex-1 space-y-2">
           <h1 className="text-3xl font-bold">{book.title}</h1>
@@ -53,13 +58,34 @@ export default function BookPage() {
             {book.author}{book.year ? ` · ${book.year}` : ""}
           </p>
           <div className="flex flex-wrap gap-2 pt-1">
-            {book.genre && <span className="inline-block rounded-full bg-[var(--mustard)]/30 px-2 py-0.5 text-sm">{book.genre}</span>}
-            {book.pages && <span className="inline-block rounded-full bg-[var(--teal)]/15 px-2 py-0.5 text-sm">{book.pages} págs</span>}
-            <span className="inline-block rounded-full bg-amber-200/60 px-2 py-0.5 text-sm">{STATUS_LABEL[book.status]}</span>
+            {book.genre && (
+              <span className="inline-block rounded-full bg-[var(--mustard)]/30 px-2 py-0.5 text-sm">
+                {book.genre}
+              </span>
+            )}
+            {book.pages && (
+              <span className="inline-block rounded-full bg-[var(--teal)]/15 px-2 py-0.5 text-sm">
+                {book.pages} págs
+              </span>
+            )}
+            <span className="inline-block rounded-full bg-amber-200/60 px-2 py-0.5 text-sm">
+              {STATUS_LABEL[book.status]}
+            </span>
           </div>
+
           <div className="pt-3 flex gap-2">
-            <a href={`/books/edit/${book.id}`} className="rounded-lg border px-4 py-2 text-sm hover:bg-[var(--teal-200)]">Editar</a>
-            <button onClick={() => router.push("/")} className="rounded-lg border px-4 py-2 text-sm hover:bg-[var(--teal-200)]">Voltar</button>
+            <a
+              href={`/books/${book.id}/edit`}
+              className="rounded-lg border px-4 py-2 text-sm hover:bg-[var(--teal-200)]"
+            >
+              Editar
+            </a>
+            <button
+              onClick={() => router.push("/")}
+              className="rounded-lg border px-4 py-2 text-sm hover:bg-[var(--teal-200)]"
+            >
+              Voltar
+            </button>
           </div>
         </div>
       </header>

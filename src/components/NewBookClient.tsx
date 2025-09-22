@@ -1,4 +1,3 @@
-// src/components/NewBookClient.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -18,13 +17,13 @@ type FormState = {
   title: string;
   author: string;
   genre: string;
-  year: string;          // string no form, converte pra number
+  year: string;
   pages: string;
-  pageCurrent: string;
-  rating: string;        // 0–5 (slider)
-  status: "QUERO_LER" | "LENDO" | "LIDO"; // restringe aqui
+  pageCurrent: string; // <- AQUI: página atual
+  rating: string;      // 0–5 (slider)
+  status: "QUERO_LER" | "LENDO" | "LIDO";
   isbn: string;
-  cover: string;         // URL (quando usar URL)
+  cover: string;       // URL (quando usar URL)
   synopsis: string;
   notes: string;
 };
@@ -85,7 +84,6 @@ export default function NewBookClient() {
 
   // ====== Upload handlers ======
   const MAX_BYTES = 3 * 1024 * 1024; // 3MB
-
   function validateAndLoadFile(file: File) {
     const isImage = file.type.startsWith("image/");
     if (!isImage) {
@@ -150,15 +148,14 @@ export default function NewBookClient() {
     return Object.keys(e).length === 0;
   }
 
-  // ====== Submit ======
+  // ====== Submit (SALVANDO pageCurrent) ======
   async function handleSubmit(e: React.FormEvent, goBack: boolean) {
     e.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
     try {
-      const coverFinal = coverSource === "file"
-        ? (coverDataUrl || undefined)
-        : (f.cover.trim() || undefined);
+      const coverFinal =
+        coverSource === "file" ? (coverDataUrl || undefined) : (f.cover.trim() || undefined);
 
       const book: Book = {
         id: (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`).toString(),
@@ -167,20 +164,19 @@ export default function NewBookClient() {
         genre: f.genre.trim() || undefined,
         year: f.year ? Number(f.year) : undefined,
         pages: f.pages ? Number(f.pages) : undefined,
-        // pageCurrent: f.pageCurrent ? Number(f.pageCurrent) : undefined, // Removed: not in Book type
+        pageCurrent: f.pageCurrent ? Number(f.pageCurrent) : undefined, // <- AQUI
         rating: f.rating ? Number(f.rating) : 0,
-        status: f.status as ReadingStatus, // ainda compatível com tipo global
+        status: f.status as ReadingStatus,
         isbn: f.isbn.trim() || undefined,
         cover: coverFinal,            // URL ou DataURL
         synopsis: f.synopsis.trim() || undefined,
         notes: f.notes.trim() || undefined,
       };
 
-      addBook(book); // dispara bookly:books-changed
+      addBook(book);
       showToast("Livro adicionado 🎉");
 
       if (goBack) {
-        // dá tempo do toast aparecer e do evento propagar
         setTimeout(() => router.push("/"), 300);
         return;
       }
@@ -409,7 +405,7 @@ export default function NewBookClient() {
             {errors.pageCurrent && <p className="text-xs text-red-600 mt-1">{errors.pageCurrent}</p>}
           </div>
 
-          {/* Status (somente 3 opções) */}
+          {/* Status */}
           <div>
             <label className="block text-xs font-semibold mb-1">Status</label>
             <select

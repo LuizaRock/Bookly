@@ -16,8 +16,6 @@ const STATUS_LABEL: Record<ReadingStatus, string> = {
   QUERO_LER: "Quero ler",
   LENDO: "Lendo",
   LIDO: "Lido",
-  PAUSADO: "Pausado",
-  ABANDONADO: "Abandonado",
 };
 
 export default function ClientShelfSection({ books }: Props) {
@@ -403,19 +401,14 @@ export default function ClientShelfSection({ books }: Props) {
 
                 {/* Editar (apenas user book) */}
                 {isUserBook(selected.id) && (
-                  <button
-                    onClick={() => {
-                      // emite evento pra algum editor/route ouvir; ajuste conforme sua app
-                      window.dispatchEvent(
-                        new CustomEvent("bookly:edit-book", { detail: { id: selected.id } })
-                      );
-                    }}
-                    className="rounded-lg border px-3 py-1.5 text-xs hover:bg-[var(--teal-200)]"
-                    title="Editar livro"
-                  >
-                    Editar
-                  </button>
-                )}
+              <a
+                  href={`/books/${selected.id}/edit`}
+                  className="rounded-lg border px-3 py-1.5 text-xs hover:bg-[var(--teal-200)]"
+                  title="Editar livro"
+             >
+                  Editar
+              </a>
+            )}
 
                 {/* Excluir (apenas user book) */}
                 {isUserBook(selected.id) && (

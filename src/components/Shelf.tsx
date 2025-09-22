@@ -2,6 +2,7 @@
 "use client";
 
 import type { Book } from "@/types/book";
+import React from "react";
 
 type Props = {
   books: Book[];
@@ -18,17 +19,21 @@ export default function Shelf({ books, ratings, setRatings, onOpen, onDelete, ca
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+    // grid compacto: até 6 colunas
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
       {books.map((b) => {
         const r = ratings[b.id] ?? b.rating ?? 0;
         const pages = b.pages ?? 0;
-        const cur = Math.min(b.currentPage ?? 0, pages);
+        // ✅ usar o campo correto
+        const cur = Math.min(b.pageCurrent ?? 0, pages);
         const pct = pages > 0 ? Math.round((cur / pages) * 100) : 0;
+
+        const barColor = pct === 100 ? "bg-green-500" : "bg-[var(--teal)]";
 
         return (
           <article
             key={b.id}
-            className="group rounded-2xl border bg-white shadow-sm hover:shadow-md transition overflow-hidden"
+            className="group rounded-xl border bg-white shadow-sm hover:shadow-md transition overflow-hidden"
           >
             <div className="relative">
               <button
@@ -48,7 +53,7 @@ export default function Shelf({ books, ratings, setRatings, onOpen, onDelete, ca
               {onDelete && (!canDelete || canDelete(b.id)) && (
                 <button
                   onClick={() => onDelete(b.id)}
-                  className="absolute top-2 right-2 rounded-md border bg-white/90 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                  className="absolute top-1.5 right-1.5 rounded-md border bg-white/90 px-2 py-0.5 text-[11px] text-red-600 hover:bg-red-50"
                   aria-label={`Excluir ${b.title}`}
                   title="Excluir"
                 >
@@ -57,36 +62,36 @@ export default function Shelf({ books, ratings, setRatings, onOpen, onDelete, ca
               )}
             </div>
 
-            <div className="p-3 space-y-2">
-              <h3 className="font-semibold leading-tight line-clamp-2">{b.title}</h3>
-              <p className="text-xs text-slate-600">{b.author}</p>
+            <div className="p-2.5 space-y-1.5">
+              <h3 className="font-semibold leading-tight text-[13px] line-clamp-2">{b.title}</h3>
+              <p className="text-[11px] text-slate-600">{b.author}</p>
 
-              {/* Rating (estrelas simples) */}
-              <div className="flex items-center gap-1" aria-label={`Avaliação: ${r} de 5`}>
+              {/* Estrelas menores */}
+              <div className="flex items-center gap-0.5" aria-label={`Avaliação: ${r} de 5`}>
                 {[1, 2, 3, 4, 5].map((i) => (
                   <button
                     key={i}
                     onClick={() => setRatings((prev) => ({ ...prev, [b.id]: i }))}
-                    className="text-base leading-none"
+                    className="leading-none"
                     title={`${i} estrela${i > 1 ? "s" : ""}`}
                     aria-label={`${i} estrela${i > 1 ? "s" : ""}`}
                   >
-                    <span className={i <= r ? "text-amber-500" : "text-slate-300"}>★</span>
+                    <span className={"text-xs " + (i <= r ? "text-amber-500" : "text-slate-300")}>★</span>
                   </button>
                 ))}
               </div>
 
-              {/* Progresso de leitura */}
+              {/* Progresso compacto */}
               {pages > 0 && (
-                <div className="space-y-1">
-                  <div className="h-2 w-full rounded bg-slate-200 overflow-hidden">
+                <div className="space-y-0.5">
+                  <div className="h-1.5 w-full rounded bg-slate-200 overflow-hidden">
                     <div
-                      className={`h-2 ${pct === 100 ? "bg-green-500" : "bg-[var(--teal)]"}`}
-                      style={{ width: `${pct}%` }}
+                      className={"h-1.5 " + barColor}
+                      style={{ width: pct + "%" }}
                     />
                   </div>
-                  <p className="text-[11px] text-slate-600">
-                    {cur}/{pages} págs {pct ? `(${pct}%)` : ""}
+                  <p className="text-[10px] text-slate-600">
+                    {cur}/{pages} págs {pct ? "(" + pct + "%)" : ""}
                   </p>
                 </div>
               )}
