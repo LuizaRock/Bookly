@@ -3,36 +3,32 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Bookly",
-  description: "Catálogo pessoal de livros",
+  description: "Catálogo pessoal de livros — Projeto Programa Desenvolve 2025",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
       <body className="min-h-screen bg-[var(--cream)] text-[var(--ink)]">
-        {/* Banner no topo */}
-        <header className="w-full bg-[var(--teal)] flex justify-center py-4 shadow-md">
-          <img src="/banner.png" alt="Bookly Banner" className="h-24 w-auto" />
+        {/* Header com banner */}
+        <header className="w-full bg-[var(--teal)] shadow-md">
+          <img
+            src="/banner.png"
+            alt="Bookly Banner"
+            className="w-full h-[150px] object-cover"
+          />
         </header>
 
-        {/* Conteúdo + Sidebar */}
         <div className="flex">
+          {/* Conteúdo principal */}
           <main className="flex-1 p-8">{children}</main>
 
-          <aside className="hidden md:block w-28 lg:w-36 border-l-2 border-[var(--teal)] pl-4">
-  <div className="sticky top-6 space-y-4">
-    <img
-      src="/sidebar.png"
-      alt="Tira vertical em estilo HQ, cenas de leitura — paleta vintage."
-      className="w-full h-auto rounded-lg shadow-md"
-    />
-    <img
-      src="/sidebar2.png"
-      alt="Ilustração retrô: quatro quadros, aventuras de leitura e imaginação."
-      className="w-full h-auto rounded-lg shadow-md"
-    />
-  </div>
-</aside>
+          {/* Sidebar direita com várias imagens */}
+          <aside className="hidden md:flex w-48 border-l-2 border-[var(--teal)] p-4 flex-col space-y-4 overflow-y-auto">
+            <img src="/sidebar1.png" alt="Calvin e Hobbes 1" className="rounded-lg shadow-md" />
+            <img src="/sidebar2.png" alt="Calvin e Hobbes 2" className="rounded-lg shadow-md" />
+            <img src="/sidebar3.png" alt="Calvin e Hobbes 3" className="rounded-lg shadow-md" />
+          </aside>
         </div>
       </body>
     </html>
